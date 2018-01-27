@@ -41,6 +41,7 @@ public class Robot extends IterativeRobot {
 		v_r.setInverted(true);
 	}
 	
+	
 	@Override
 	public void autonomousInit() {
 		String gameData = DriverStation.getInstance().getGameSpecificMessage();
