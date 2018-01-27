@@ -22,6 +22,7 @@ public class Robot extends IterativeRobot {
 	private TalonSRX t_r = new TalonSRX(2);
 	private VictorSPX v_l = new VictorSPX(1);
 	private VictorSPX v_r = new VictorSPX(3);
+
 	
 	@Override
 	public void robotInit() {
