@@ -53,7 +53,7 @@ public class Robot extends IterativeRobot {
 		t_r.config_kF(0, 0.3722, 10);
 		t_r.config_kP(0, 0.130, 10);
 		t_r.config_kI(0, 0, 10);
-		t_r.config_kD(0, 1.006730, 10);
+		t_r.config_kD(0, 1.167, 10);
 		t_r.setSensorPhase(true);
 	}
 	
@@ -67,36 +67,36 @@ public class Robot extends IterativeRobot {
 	@Override
 	public void autonomousPeriodic() {
 		if (finished) return;
-		t_l.set(ControlMode.Velocity, 0.5 * 4096 * 500.0 / 600);//run straight for 5m
-		t_r.set(ControlMode.Velocity, 0.5 * 4096 * 500.0 / 600);
+		t_l.set(ControlMode.Velocity, 0.4 * 4096 * 500.0 / 600);//run straight for 5m
+		t_r.set(ControlMode.Velocity, 0.4 * 4096 * 500.0 / 600);
 		Timer.delay(0.5*5.5);
 		t_l.set(ControlMode.Velocity, 0.0);
 		t_r.set(ControlMode.Velocity, 0.0);
 		Timer.delay(0.3);
 		t_l.set(ControlMode.Velocity, -0.25 * 4096 * 500.0 / 600);//turn left 90 degrees
 		t_r.set(ControlMode.Velocity, 0.25 * 4096 * 500.0 / 600);
-		Timer.delay(0.8);
-		t_l.set(ControlMode.Velocity, 0.0);
-		t_r.set(ControlMode.Velocity, 0.0);
-		Timer.delay(0.3);
-		t_l.set(ControlMode.Velocity, 0.5 * 4096 * 500.0 / 600);//run straight for 1.25m
-		t_r.set(ControlMode.Velocity, 0.5 * 4096 * 500.0 / 600);
-		Timer.delay(0.5*1.1);
-		t_l.set(ControlMode.Velocity, 0.0);
-		t_r.set(ControlMode.Velocity, 0.0);
-		Timer.delay(0.3);
-		t_l.set(ControlMode.Velocity, -0.25 * 4096 * 500.0 / 600);//turn left 90 degrees
-		t_r.set(ControlMode.Velocity, 0.25 * 4096 * 500.0 / 600);
-		Timer.delay(0.8);
-		t_l.set(ControlMode.Velocity, 0.0);
-		t_r.set(ControlMode.Velocity, 0.0);
+		Timer.delay(0.63);
+		//t_l.set(ControlMode.Velocity, 0.0);
+		//t_r.set(ControlMode.Velocity, 0.0);
+		//Timer.delay(0.3);
+		//t_l.set(ControlMode.Velocity, 0.5 * 4096 * 500.0 / 600);//run straight for 1.25m
+		//t_r.set(ControlMode.Velocity, 0.5 * 4096 * 500.0 / 600);
+		//Timer.delay(0.5*1.1);
+		//t_l.set(ControlMode.Velocity, 0.0);
+		//t_r.set(ControlMode.Velocity, 0.0);
+		//Timer.delay(0.3);
+		//t_l.set(ControlMode.Velocity, -0.25 * 4096 * 500.0 / 600);//turn left 90 degrees
+		//t_r.set(ControlMode.Velocity, 0.25 * 4096 * 500.0 / 600);
+		//Timer.delay(0.60);
+		//t_l.set(ControlMode.Velocity, 0.0);
+		//t_r.set(ControlMode.Velocity, 0.0);
 		/*
 		 * code for grabing and lifting cubes is needed here.
 		 * then the robot should run forwards at low speed and then drop the cube
 		*/
-		t_l.set(ControlMode.Velocity, 0.1 * 4096 * 500.0 / 600);//run straight at low speed
-		t_r.set(ControlMode.Velocity, 0.1 * 4096 * 500.0 / 600);//to contact the fence
-		Timer.delay(3);
+		//t_l.set(ControlMode.Velocity, 0.1 * 4096 * 500.0 / 600);//run straight at low speed
+		//t_r.set(ControlMode.Velocity, 0.1 * 4096 * 500.0 / 600);//to contact the fence
+		//Timer.delay(3);
 		t_l.set(ControlMode.Velocity, 0.0);
 		t_r.set(ControlMode.Velocity, 0.0);
 		finished = true;
@@ -118,32 +118,35 @@ public class Robot extends IterativeRobot {
 		double r_trg = (s_y-s_z)* 4096 * 500.0 / 600;
 		l_trg *= throttle;
 		r_trg *= throttle;
+		//if(stick.getRawButton(1)){
+		//	r_trg=l_trg;
+		//}
 		if(stick.getRawButton(1)){
-			r_trg=l_trg;
+			r_trg=0;
+			l_trg=0;
 		}
 		t_l.set(ControlMode.Velocity, l_trg);
 		t_r.set(ControlMode.Velocity, r_trg);
 		StringBuilder console = new StringBuilder();
 		
 //		for the test of Velocity closed-loop
-//		console.append("out:");
-//		console.append(t_l.getMotorOutputPercent());
-//		console.append("\tspd:");
-//		console.append(t_l.getSelectedSensorVelocity(0));
-//		console.append("\terr:");
-//		console.append(t_l.getClosedLoopError(0));
-//		console.append("\ttrg:");
-//		console.append(l_trg);
-//		
-//		console.append("\t\tout:");
-//		console.append(t_r.getMotorOutputPercent());
-//		console.append("\tspd:");
-//		console.append(t_r.getSelectedSensorVelocity(0));
-//		console.append("\terr:");
-//		console.append(t_r.getClosedLoopError(0));
-//		console.append("\ttrg:");
-//		console.append(r_trg);
+		console.append("out:");
+		console.append(t_l.getMotorOutputPercent());
+		console.append("\tspd:");
+		console.append(t_l.getSelectedSensorVelocity(0));
+		console.append("\terr:");
+		console.append(t_l.getClosedLoopError(0));
+		console.append("\ttrg:");
+		console.append(l_trg);
 		
+		console.append("\t\tout:");
+		console.append(t_r.getMotorOutputPercent());
+		console.append("\tspd:");
+		console.append(t_r.getSelectedSensorVelocity(0));
+		console.append("\terr:");
+		console.append(t_r.getClosedLoopError(0));
+		console.append("\ttrg:");
+		console.append(r_trg);
 		if (++loops >= 10) {
 			loops = 0;
 			System.out.println(console.toString());
