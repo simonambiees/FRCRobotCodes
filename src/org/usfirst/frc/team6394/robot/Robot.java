@@ -6,18 +6,29 @@
 /*----------------------------------------------------------------------------*/
 package org.usfirst.frc.team6394.robot;
 
+import edu.wpi.first.wpilibj.hal.FRCNetComm.tResourceType;
+
+
+
+
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.IterativeRobot;
 import edu.wpi.first.wpilibj.Joystick;
+import edu.wpi.first.wpilibj.PWMSpeedController;
+import edu.wpi.first.wpilibj.SPI;
 import edu.wpi.first.wpilibj.Timer;
 
 import java.util.FormatFlagsConversionMismatchException;
 
+import javax.lang.model.element.VariableElement;
+
+import org.omg.CORBA.PUBLIC_MEMBER;
 import org.omg.PortableInterceptor.TRANSPORT_RETRY;
 
 import com.ctre.phoenix.motorcontrol.*;
 import com.ctre.phoenix.motorcontrol.can.*;
-
+import com.kauailabs.navx.frc.*;
+import edu.wpi.first.wpilibj.hal.HAL;
 
 public class Robot extends IterativeRobot {
 	private boolean[] colorPos = new boolean[3]; 
@@ -27,7 +38,8 @@ public class Robot extends IterativeRobot {
 	private TalonSRX t_r = new TalonSRX(2);
 	private VictorSPX v_l = new VictorSPX(1);
 	private VictorSPX v_r = new VictorSPX(3);
-
+	AHRS ahrs;
+	
 	
 	@Override
 	public void robotInit() {
@@ -55,6 +67,8 @@ public class Robot extends IterativeRobot {
 		t_r.config_kI(0, 0.0022, 10);
 		t_r.config_kD(0, 10.180, 10);
 		t_r.setSensorPhase(true);
+		
+		ahrs = new AHRS(SPI.Port.kMXP);
 	}
 	
 
@@ -62,12 +76,20 @@ public class Robot extends IterativeRobot {
 	@Override
 	public void autonomousInit() {
 		finished = false;
+		//t_l.config_kF(0, 0.3892, 10);
+		//t_l.config_kP(0, 0.1496, 10);
+		//t_l.config_kI(0, 0.0025, 10);
+		//t_l.config_kD(0, 3.496,  10);
+		//t_r.config_kF(0, 0.3892, 10);
+		//t_r.config_kP(0, 0.1180, 10);
+		//t_r.config_kI(0, 0.0022, 10);
+		//t_r.config_kD(0, 10.180, 10);
 	}
 	
 	@Override
 	public void autonomousPeriodic() {
 		if (finished) return;
-		t_l.set(ControlMode.Velocity, 0.5 * 4096 * 500.0 / 600);//run straight for 5m
+		/*t_l.set(ControlMode.Velocity, 0.5 * 4096 * 500.0 / 600);//run straight for 5m
 		t_r.set(ControlMode.Velocity, 0.5 * 4096 * 500.0 / 600);
 		Timer.delay(0.5*5.5);
 		t_l.set(ControlMode.Velocity, 0.0);
@@ -94,12 +116,34 @@ public class Robot extends IterativeRobot {
 		 * code for grabing and lifting cubes is needed here.
 		 * then the robot should run forwards at low speed and then drop the cube
 		*/
-		t_l.set(ControlMode.Velocity, 0.1 * 4096 * 500.0 / 600);//run straight at low speed
+		/*t_l.set(ControlMode.Velocity, 0.1 * 4096 * 500.0 / 600);//run straight at low speed
 		t_r.set(ControlMode.Velocity, 0.1 * 4096 * 500.0 / 600);//to contact the fence
 		Timer.delay(3);
 		t_l.set(ControlMode.Velocity, 0.0);
-		t_r.set(ControlMode.Velocity, 0.0);
-		finished = true;
+		t_r.set(ControlMode.Velocity, 0.0);*/
+		
+		
+			
+		
+		console.append("angle:");
+		console.append(ahrs.getAngle());
+		console.append("\taltitude:");
+		console.append(ahrs.getAltitude());
+		console.append("\tanglecorrection:");
+		console.append(ahrs.getAngleAdjustment());
+		console.append("\tpercentoutput");
+		
+		if (++loops >= 8) {
+			loops = 0;
+			System.out.println(console.toString());
+		}
+		console.setLength(0);
+		t_l.set(ControlMode.PercentOutput, 0.2);
+		t_r.set(ControlMode.PercentOutput, -0.2);
+		
+		if (ahrs.getAngle() == 360) {
+			finished = true;
+		}
 	}
 	
 	@Override
@@ -111,22 +155,27 @@ public class Robot extends IterativeRobot {
 	
 	@Override
 	public void teleopPeriodic() {
+		if ( stick.getRawButton(12)) {
+            ahrs.reset();
+          
+        }
 		double throttle = stick.getThrottle();
 		throttle++; throttle /= 2;
 		double s_y = -stick.getY()/2;
-		s_y = (s_y < 0.08 ? (s_y < -0.08 ? s_y : 0) : s_y);
+		s_y = (s_y < 0.15 ? (s_y < -0.15 ? s_y : 0) : s_y);
 		double s_z = stick.getZ()/3;
-		double l_trg = (s_y+s_z)* 4096 * 500.0 / 600;
-		double r_trg = (s_y-s_z)* 4096 * 500.0 / 600;
-//		double l_trg = s_y+s_z;
-//		double r_trg = s_y-s_z;
+//		double l_trg = (s_y+s_z)* 4096 * 500.0 / 600;
+//		double r_trg = (s_y-s_z)* 4096 * 500.0 / 600;
+		double l_trg = s_y+s_z;
+		double r_trg = s_y-s_z;
 		l_trg *= throttle;
 		r_trg *= throttle;
 		if(stick.getRawButton(1)){
+			l_trg=s_y;
 			r_trg=l_trg;
 		}
-		t_l.set(ControlMode.Velocity, l_trg);
-		t_r.set(ControlMode.Velocity, r_trg);
+		t_l.set(ControlMode.PercentOutput, l_trg);
+		t_r.set(ControlMode.PercentOutput, r_trg);
 		
 //		for the test of Velocity closed-loop
 //		console.append("out:");
@@ -147,10 +196,25 @@ public class Robot extends IterativeRobot {
 //		console.append("\ttrg:");
 //		console.append(r_trg);
 //		
-//		if (++loops >= 8) {
-//			loops = 0;
-//			System.out.println(console.toString());
-//		}
-//		console.setLength(0);
+		console.append("angle:");
+		console.append(ahrs.getAngle());
+		console.append("\taltitude:");
+		console.append(ahrs.getAltitude());
+		console.append("\tanglecorrection:");
+		console.append(ahrs.getAngleAdjustment());
+		console.append("\tpercentoutput");
+		console.append(l_trg);
+		console.append("\t" + r_trg);
+		if (++loops >= 8) {
+			loops = 0;
+			System.out.println(console.toString());
+		}
+		console.setLength(0);
+		
+		
+		
 	}
+	//public class Talon extends PWMSpeedController{
+		
+	//}
 }
