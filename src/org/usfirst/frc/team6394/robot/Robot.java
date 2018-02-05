@@ -13,27 +13,37 @@
 package org.usfirst.frc.team6394.robot;
 
 import com.ctre.phoenix.motorcontrol.ControlMode;
+import com.ctre.phoenix.motorcontrol.NeutralMode;
 import com.ctre.phoenix.motorcontrol.can.*;
 import com.ctre.phoenix.sensors.*;
 import com.kauailabs.navx.frc.AHRS;
 
+import edu.wpi.first.wpilibj.GenericHID.Hand;
 import edu.wpi.first.wpilibj.I2C.Port;
 import edu.wpi.first.wpilibj.IterativeRobot;
-import edu.wpi.first.wpilibj.Joystick;
-import edu.wpi.first.wpilibj.Joystick.AxisType;
+//import edu.wpi.first.wpilibj.Joysticklogi;
+//import edu.wpi.first.wpilibj.Joysticklogi.AxisType;
+import edu.wpi.first.wpilibj.Talon;
+import edu.wpi.first.wpilibj.Timer;
+import edu.wpi.first.wpilibj.XboxController;
 
 public class Robot extends IterativeRobot {
 
  
 	/* robot peripherals */
-	private Joystick stick = new Joystick(0);
+	private XboxController sticklogi = new XboxController(0);
+	private XboxController stickbeitong = new XboxController(1);
 	private TalonSRX t_l = new TalonSRX(0);
 	private TalonSRX t_r = new TalonSRX(2);
 	private VictorSPX v_l = new VictorSPX(1);
 	private VictorSPX v_r = new VictorSPX(3);
+	private Talon i_l = new Talon(0);
+	private Talon i_r = new Talon(1);
+	private Talon lift_l = new Talon(2);
+	private Talon lift_r = new Talon(3);
 	
 	
-	private AHRS ahrs = new AHRS(Port.kMXP);		/* Joystick object on USB port 1 */
+	private AHRS ahrs = new AHRS(Port.kMXP);		/* Joysticklogi object on USB port 1 */
 
 	/** state for tracking whats controlling the drivetrain */
 	enum GoStraight
@@ -47,8 +57,8 @@ public class Robot extends IterativeRobot {
 	 * Some gains for heading servo, these were tweaked by using the web-based
 	 * config (CAN Talon) and pressing gamepad button 6 to load them.
 	 */
-	double kPgain = 0.25; /* percent throttle per degree of error */
-	double kDgain = 0.0025; /* percent throttle per angular velocity dps */
+	double kPgain = 0.05; /* percent throttle per degree of error */
+	double kDgain = 0; /* percent throttle per angular velocity dps */
 	double kMaxCorrectionRatio = 0.30; /* cap corrective turning throttle to 30 percent of forward throttle */
 	/** holds the current angle to servo to */
 	double _targetAngle = 0;
@@ -68,22 +78,68 @@ public class Robot extends IterativeRobot {
 		//_pidgey = new PigeonImu(0); /* Pigeon is on CANBus (powered from ~12V, and has a device ID of zero */
 		//_pidgey = new PigeonIMU(_spareTalon); /* Pigeon is ribbon cabled to the specified CANTalon. */
 
-		/* Define joystick being used at USB port #0 on the Drivers Station */
-		//_driveStick = new Joystick(0);	
+		/* Define joysticklogi being used at USB port #0 on the Drivers Station */
+		//_drivesticklogi = new Joysticklogi(0);	
+	}
+	
+	private void turnDegree(double degree) {
+		
+		int sign;
+		ahrs.reset();
+		if(degree>0) {
+			sign = 1;
+			
+		}else if(degree<0){
+			sign = -1;
+		}else {
+			return;
+		}
+		while (sign*ahrs.getAngle()<sign*degree) {
+			double spd = sign * ((degree - ahrs.getAngle())/degree*0.3 + 0.2);
+			t_l.set(ControlMode.PercentOutput, spd);
+			t_r.set(ControlMode.PercentOutput, -spd);
+		}
+		t_l.set(ControlMode.PercentOutput, 0);
+		t_r.set(ControlMode.PercentOutput, 0);
 	}
 	
     public void teleopInit() {
 		ahrs.reset(); /* reset heading, angle measurement wraps at plus/minus 23,040 degrees (64 rotations) */
 		_goStraight = GoStraight.Off;  
+		t_l.setNeutralMode(NeutralMode.Brake);
+		t_r.setNeutralMode(NeutralMode.Brake);
+		v_l.setNeutralMode(NeutralMode.Brake);
+		v_r.setNeutralMode(NeutralMode.Brake);
 		
     }
     private int loops = 0;
 	private StringBuilder console = new StringBuilder();
-	
+	private boolean straightButtonPast = false;
     /**
      * This function is called periodically during operator control
      */
     public void teleopPeriodic() {
+    	
+    	if(sticklogi.getRawButton(1) && !straightButtonPast) {
+			ahrs.reset();
+			Timer.delay(0.05);
+		}
+    	if(sticklogi.getRawButtonPressed(2)) {
+    		turnDegree(90);
+    	}
+    	double s_i = -stickbeitong.getRawAxis(5);
+    	s_i = (s_i < 0.08 ? (s_i < -0.08 ? s_i : 0) : s_i);
+    	
+    	i_r.set(s_i);
+    	i_l.set(s_i);
+    	
+    	double s_lift = stickbeitong.getTriggerAxis(Hand.kRight);
+    	if (stickbeitong.getRawButton(3)) {
+    		s_lift = s_lift *-1;
+    	}
+    	
+    	lift_l.set(s_lift);
+    	lift_r.set(s_lift);
     	/* some temps for Pigeon API */
 //		PigeonIMU.GeneralStatus genStatus = new PigeonIMU.GeneralStatus();
 //		PigeonIMU.FusionStatus fusionStatus = new PigeonIMU.FusionStatus();
@@ -94,13 +150,21 @@ public class Robot extends IterativeRobot {
 		boolean angleIsGood = ahrs.isConnected();
 		double currentAngularRate = ahrs.getRate();
 		/* get input from gamepad */
-		boolean userWantsGoStraight = stick.getRawButton(1); /* top left shoulder button */
-		double throttle = stick.getThrottle();
-		throttle++; throttle /= 2;
-		double s_y = -stick.getY()/3;
-		s_y = (s_y < 0.15 ? (s_y < -0.15 ? s_y : 0) : s_y);
-		double s_z = stick.getX()/2;
-		/* deadbands so centering joysticks always results in zero output */
+		boolean userWantsGoStraight = sticklogi.getRawButton(1); /* top left shoulder button */
+//		double throttle = sticklogi.getThrottle();
+//		throttle++; throttle /= 2;
+		
+		double s_y = -sticklogi.getRawAxis(1)/1.5;
+		s_y = (s_y < 0.08 ? (s_y < -0.08 ? s_y : 0) : s_y);
+		
+		double s_z = sticklogi.getRawAxis(4)/2;
+		boolean isInSlowMode = sticklogi.getRawButton(6);
+    	
+    	if (isInSlowMode) {
+    		s_y = s_y*0.5;
+    		s_z = s_z*0.5;
+    	}
+		/* deadbands so centering joysticklogis always results in zero output */
 //		forwardThrottle = Db(forwardThrottle);
 //		turnThrottle = Db(turnThrottle);
 		/* simple state machine to update our goStraight selection */
@@ -144,8 +208,8 @@ public class Robot extends IterativeRobot {
 					double r_trg = s_y-s_z;
 //					l_trg = Cap(l_trg, 1.0);
 //					r_trg = Cap(r_trg, 1.0);
-					l_trg *= throttle;
-					r_trg *= throttle;
+//					l_trg *= throttle;
+//					r_trg *= throttle;
 					l_trg=s_y;
 					r_trg=l_trg;
 //					t_l.set(ControlMode.PercentOutput, l_trg);
@@ -156,9 +220,7 @@ public class Robot extends IterativeRobot {
 
 		/* if we can servo with IMU, do the math here */
 		if (_goStraight == GoStraight.UseAHRS) {
-			if(stick.getRawButton(1)) {
-				ahrs.reset();
-			}
+			
 			/* very simple Proportional and Derivative (PD) loop with a cap,
 			 * replace with favorite close loop strategy or leverage future Talon <=> Pigeon features. */
 			s_z = (_targetAngle - currentAngle) * kPgain - (currentAngularRate) * kDgain;
@@ -185,8 +247,8 @@ public class Robot extends IterativeRobot {
 		double r_trg = s_y-s_z;
 //		l_trg = Cap(l_trg, 1.0);
 //		r_trg = Cap(r_trg, 1.0);
-		l_trg *= throttle;
-		r_trg *= throttle;
+//		l_trg *= throttle;
+//		r_trg *= throttle;
 		t_l.set(ControlMode.PercentOutput,l_trg);
 		
 		t_r.set(ControlMode.PercentOutput,r_trg);
@@ -207,7 +269,7 @@ public class Robot extends IterativeRobot {
 
 		/* press btn 6, top right shoulder, to apply gains from webdash.  This can
 		 * be replaced with your favorite means of changing gains. */
-//		if (stick.getRawButton(6)) {
+//		if (sticklogi.getRawButton(6)) {
 //			UpdatGains();
 //		}     
 		console.append("angle:");
@@ -223,6 +285,8 @@ public class Robot extends IterativeRobot {
 			System.out.println(console.toString());
 		}
 		console.setLength(0);
+		
+		straightButtonPast = sticklogi.getRawButton(1);
     }
     /** @return 10% deadband */
 /*	double Db(double axisVal) {
